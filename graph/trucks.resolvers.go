@@ -40,6 +40,14 @@ func (r *mutationResolver) SaveShipment(ctx context.Context, id *string, name st
 	return shipment, nil
 }
 
+func (r *mutationResolver) DeleteTruck(ctx context.Context, id *string) (bool, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *mutationResolver) DeleteShipment(ctx context.Context, id *string) (bool, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 func (r *queryResolver) PaginatedTrucks(ctx context.Context, id *string, plateNo *string, page int, first int) ([]*model.Truck, error) {
 	// panic(fmt.Errorf("not implemented"))
 
