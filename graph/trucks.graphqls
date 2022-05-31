@@ -60,5 +60,5 @@ type Mutation {
 
     sendTruckDatatoEmail(
         email: String!
-    ): Email!
+    ):!
 }

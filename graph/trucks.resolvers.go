@@ -10,8 +10,10 @@ import (
 	"os"
 	"github.com/Zahri-Kargo/kargo-trucks/graph/generated"
 	"github.com/Zahri-Kargo/kargo-trucks/graph/model"
-	"encoding/csv"
+	"sync"
 	"log"
+	"encoding/csv"
+
 )
 
 func (r *mutationResolver) SaveTruck(ctx context.Context, id *string, plateNo string) (*model.Truck, error) {
@@ -57,6 +59,32 @@ func (r *mutationResolver) SendTruckDatatoEmail(ctx context.Context, email strin
 		Email:	email,
 	}
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(r.Truck) / 10)
+
+	for i := 0; i < len(r.Truck)/10; i++ {
+		// In go routine we are only reading val from map
+		go func(rs *mutationResolver) {
+			defer wg.Done()
+			truckData := r.generateTruckData()
+			csvFile, err := os.Create("Truck.csv")
+			csvwriter := csv.NewWriter(csvFile)
+			for _, trucRow := range truckData {
+				_ = csvwriter.Write(trucRow)
+			}
+			csvwriter.Flush()
+			csvFile.Close()
+
+			if err != nil {
+				log.Println(err)
+			}
+
+			fmt.Println(truckData)
+		}(r)
+	}
+
+	wg.Wait()
+
 	from := "zahri.rusli@gmail.com"
 	password := os.Getenv("EMAILPASSWORD")
 
@@ -85,6 +113,8 @@ func (r *mutationResolver) SendTruckDatatoEmail(ctx context.Context, email strin
 	fmt.Println("Email Sent Successfully!")
 	return emails, nil	
 }
+
+
 func (r *queryResolver) PaginatedTrucks(ctx context.Context, id *string, plateNo *string, page int, first int)([]*model.Truck, error) {
 	// Sender data.
 
@@ -93,6 +123,22 @@ func (r *queryResolver) PaginatedTrucks(ctx context.Context, id *string, plateNo
 
 func (r *queryResolver) PaginatedShipments(ctx context.Context, id *string, origin *string, destination *string, page int, first int) ([]*model.Shipment, error) {
 	return r.Shipment, nil
+}
+
+
+func (r *mutationResolver) generateTruckData() [][]string {
+	trucksData := make([][]string, 10)
+
+	for _, truck := range r.Truck {
+		if len(trucksData) == 10 {
+			break
+		}
+		trucksData = append(trucksData, []string{
+			truck.ID,
+			truck.PlateNo,
+		})
+	}
+	return trucksData
 }
 
 // Mutation returns generated.MutationResolver implementation.
