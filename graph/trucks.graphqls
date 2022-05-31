@@ -12,6 +12,10 @@ type Shipment{
    trucks: Truck
 }
 
+type Email{
+    email: String!
+}
+
 type Query { 
   paginatedTrucks(
    id: String
@@ -53,4 +57,8 @@ type Mutation {
     deleteShipment(
         id: ID
     ): Boolean!
+
+    sendTruckDatatoEmail(
+        email: String!
+    ): Email!
 }

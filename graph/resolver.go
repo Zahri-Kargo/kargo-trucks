@@ -11,3 +11,4 @@ type Resolver struct {
 	Truck []*model.Truck
 	Shipment []*model.Shipment
 }
+
