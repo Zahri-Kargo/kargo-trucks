@@ -5,18 +5,18 @@ package graph
 
 import (
 	"context"
+	"encoding/csv"
+	"errors"
 	"fmt"
+	"log"
 	"net/smtp"
 	"os"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/Zahri-Kargo/kargo-trucks/graph/generated"
 	"github.com/Zahri-Kargo/kargo-trucks/graph/model"
-	"sync"
-	"log"
-	"encoding/csv"
-	"strings"
-	"errors"
-	"strconv"
-
 )
 
 func (r *mutationResolver) SaveTruck(ctx context.Context, id *string, plateNo string) (*model.Truck, error) {
@@ -24,7 +24,7 @@ func (r *mutationResolver) SaveTruck(ctx context.Context, id *string, plateNo st
 	err := platNoValidate(plateNo)
 
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	truck := &model.Truck{
@@ -37,36 +37,6 @@ func (r *mutationResolver) SaveTruck(ctx context.Context, id *string, plateNo st
 	r.Truck = append(r.Truck, truck)
 
 	return truck, nil
-}
-
-func platNoValidate(plateNo string) error{
-	plateParts := strings.Split(plateNo, " ")
-	
-	if len(plateParts) != 3 {
-		return errors.New(INVALID_PLAT_NUMBER)
-	}else{
-
-		if len(plateParts[0]) > 2 {
-			return errors.New(INVALID_PLAT_NUMBER)
-		}
-
-		
-		num, err := strconv.Atoi(plateParts[1])
-		
-		if err != nil {
-			return errors.New(INVALID_PLAT_NUMBER)
-		}
-
-		if num > 9999 {
-			return errors.New(INVALID_PLAT_NUMBER)
-		}
-
-
-		if len(plateParts[2] )> 3{
-			return errors.New(INVALID_PLAT_NUMBER)
-		}
-	}
-	return nil
 }
 
 func (r *mutationResolver) SaveShipment(ctx context.Context, id *string, name string, origin string, destination string, deliveryDate string, truckID *string) (*model.Shipment, error) {
@@ -83,18 +53,18 @@ func (r *mutationResolver) SaveShipment(ctx context.Context, id *string, name st
 	return shipment, nil
 }
 
-func (r *mutationResolver) DeleteTruck(ctx context.Context, id *string) (bool, error) {
+func (r *mutationResolver) DeleteTruck(ctx context.Context, id string) (bool, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *mutationResolver) DeleteShipment(ctx context.Context, id *string) (bool, error) {
+func (r *mutationResolver) DeleteShipment(ctx context.Context, id string) (bool, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) SendTruckDatatoEmail(ctx context.Context, email string) (*model.Email, error) {
 	fmt.Println(email)
-	emails :=&model.Email{
-		Email:	email,
+	emails := &model.Email{
+		Email: email,
 	}
 
 	wg := sync.WaitGroup{}
@@ -105,6 +75,7 @@ func (r *mutationResolver) SendTruckDatatoEmail(ctx context.Context, email strin
 		go func(rs *mutationResolver) {
 			defer wg.Done()
 			truckData := r.generateTruckData()
+			fmt.Println(truckData)
 			csvFile, err := os.Create("Truck.csv")
 			csvwriter := csv.NewWriter(csvFile)
 			for _, trucRow := range truckData {
@@ -117,7 +88,7 @@ func (r *mutationResolver) SendTruckDatatoEmail(ctx context.Context, email strin
 				log.Println(err)
 			}
 
-			fmt.Println(truckData)
+			// fmt.Println(truckData)
 		}(r)
 	}
 
@@ -149,11 +120,10 @@ func (r *mutationResolver) SendTruckDatatoEmail(ctx context.Context, email strin
 		fmt.Println(err)
 	}
 	fmt.Println("Email Sent Successfully!")
-	return emails, nil	
+	return emails, nil
 }
 
-
-func (r *queryResolver) PaginatedTrucks(ctx context.Context, id *string, plateNo *string, page int, first int)([]*model.Truck, error) {
+func (r *queryResolver) PaginatedTrucks(ctx context.Context, id *string, plateNo *string, page int, first int) ([]*model.Truck, error) {
 	// Sender data.
 
 	return r.Truck, nil
@@ -161,22 +131,6 @@ func (r *queryResolver) PaginatedTrucks(ctx context.Context, id *string, plateNo
 
 func (r *queryResolver) PaginatedShipments(ctx context.Context, id *string, origin *string, destination *string, page int, first int) ([]*model.Shipment, error) {
 	return r.Shipment, nil
-}
-
-
-func (r *mutationResolver) generateTruckData() [][]string {
-	trucksData := make([][]string, 10)
-
-	for _, truck := range r.Truck {
-		if len(trucksData) == 10 {
-			break
-		}
-		trucksData = append(trucksData, []string{
-			truck.ID,
-			truck.PlateNo,
-		})
-	}
-	return trucksData
 }
 
 // Mutation returns generated.MutationResolver implementation.
@@ -194,8 +148,52 @@ type queryResolver struct{ *Resolver }
 //  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
+func platNoValidate(plateNo string) error {
+	plateParts := strings.Split(plateNo, " ")
+
+	if len(plateParts) != 3 {
+		return errors.New(INVALID_PLAT_NUMBER)
+	} else {
+
+		if len(plateParts[0]) > 2 {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+
+		num, err := strconv.Atoi(plateParts[1])
+
+		if err != nil {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+
+		if num > 9999 {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+
+		if len(plateParts[2]) > 3 {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+	}
+	return nil
+}
+func (r *mutationResolver) generateTruckData() [][]string {
+	trucksData := make([][]string, 10)
+
+	for _, truck := range r.Truck{
+		
+		data :=[]string{
+			truck.ID,
+			truck.PlateNo,
+		}
+		trucksData = append(trucksData,data)
+
+		if len(trucksData) == 10 {
+			break
+		}
+	}
+	return trucksData
+}
 func (r *Resolver) Init() {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 20; i++ {
 		truck := &model.Truck{
 			ID:      fmt.Sprintf("TRUCK-%d", len(r.Truck)+1),
 			PlateNo: fmt.Sprintf("B %d CD", len(r.Truck)+1),

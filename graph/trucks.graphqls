@@ -1,6 +1,7 @@
 type Truck { 
     id: ID! 
     plateNo: String!
+    isDeleted: Boolean!
 }
 
 type Shipment{
@@ -51,14 +52,14 @@ type Mutation {
     ) : Shipment!
 
     deleteTruck(
-        id: ID
+        id: ID!
     ): Boolean!
 
     deleteShipment(
-        id: ID
+        id: ID!
     ): Boolean!
 
     sendTruckDatatoEmail(
         email: String!
-    ):!
+    ):Email!
 }

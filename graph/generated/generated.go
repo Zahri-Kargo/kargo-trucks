@@ -49,8 +49,8 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		DeleteShipment       func(childComplexity int, id *string) int
-		DeleteTruck          func(childComplexity int, id *string) int
+		DeleteShipment       func(childComplexity int, id string) int
+		DeleteTruck          func(childComplexity int, id string) int
 		SaveShipment         func(childComplexity int, id *string, name string, origin string, destination string, deliveryDate string, truckID *string) int
 		SaveTruck            func(childComplexity int, id *string, plateNo string) int
 		SendTruckDatatoEmail func(childComplexity int, email string) int
@@ -71,16 +71,17 @@ type ComplexityRoot struct {
 	}
 
 	Truck struct {
-		ID      func(childComplexity int) int
-		PlateNo func(childComplexity int) int
+		ID        func(childComplexity int) int
+		IsDeleted func(childComplexity int) int
+		PlateNo   func(childComplexity int) int
 	}
 }
 
 type MutationResolver interface {
 	SaveTruck(ctx context.Context, id *string, plateNo string) (*model.Truck, error)
 	SaveShipment(ctx context.Context, id *string, name string, origin string, destination string, deliveryDate string, truckID *string) (*model.Shipment, error)
-	DeleteTruck(ctx context.Context, id *string) (bool, error)
-	DeleteShipment(ctx context.Context, id *string) (bool, error)
+	DeleteTruck(ctx context.Context, id string) (bool, error)
+	DeleteShipment(ctx context.Context, id string) (bool, error)
 	SendTruckDatatoEmail(ctx context.Context, email string) (*model.Email, error)
 }
 type QueryResolver interface {
@@ -120,7 +121,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteShipment(childComplexity, args["id"].(*string)), true
+		return e.complexity.Mutation.DeleteShipment(childComplexity, args["id"].(string)), true
 
 	case "Mutation.deleteTruck":
 		if e.complexity.Mutation.DeleteTruck == nil {
@@ -132,7 +133,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteTruck(childComplexity, args["id"].(*string)), true
+		return e.complexity.Mutation.DeleteTruck(childComplexity, args["id"].(string)), true
 
 	case "Mutation.saveShipment":
 		if e.complexity.Mutation.SaveShipment == nil {
@@ -243,6 +244,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Truck.ID(childComplexity), true
 
+	case "Truck.isDeleted":
+		if e.complexity.Truck.IsDeleted == nil {
+			break
+		}
+
+		return e.complexity.Truck.IsDeleted(childComplexity), true
+
 	case "Truck.plateNo":
 		if e.complexity.Truck.PlateNo == nil {
 			break
@@ -320,6 +328,7 @@ var sources = []*ast.Source{
 	{Name: "../trucks.graphqls", Input: `type Truck { 
     id: ID! 
     plateNo: String!
+    isDeleted: Boolean!
 }
 
 type Shipment{
@@ -370,16 +379,16 @@ type Mutation {
     ) : Shipment!
 
     deleteTruck(
-        id: ID
+        id: ID!
     ): Boolean!
 
     deleteShipment(
-        id: ID
+        id: ID!
     ): Boolean!
 
     sendTruckDatatoEmail(
         email: String!
-    ): Email!
+    ):Email!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -391,10 +400,10 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_deleteShipment_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
+	var arg0 string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -406,10 +415,10 @@ func (ec *executionContext) field_Mutation_deleteShipment_args(ctx context.Conte
 func (ec *executionContext) field_Mutation_deleteTruck_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
+	var arg0 string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -750,6 +759,8 @@ func (ec *executionContext) fieldContext_Mutation_saveTruck(ctx context.Context,
 				return ec.fieldContext_Truck_id(ctx, field)
 			case "plateNo":
 				return ec.fieldContext_Truck_plateNo(ctx, field)
+			case "isDeleted":
+				return ec.fieldContext_Truck_isDeleted(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Truck", field.Name)
 		},
@@ -851,7 +862,7 @@ func (ec *executionContext) _Mutation_deleteTruck(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteTruck(rctx, fc.Args["id"].(*string))
+		return ec.resolvers.Mutation().DeleteTruck(rctx, fc.Args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -906,7 +917,7 @@ func (ec *executionContext) _Mutation_deleteShipment(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteShipment(rctx, fc.Args["id"].(*string))
+		return ec.resolvers.Mutation().DeleteShipment(rctx, fc.Args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1049,6 +1060,8 @@ func (ec *executionContext) fieldContext_Query_paginatedTrucks(ctx context.Conte
 				return ec.fieldContext_Truck_id(ctx, field)
 			case "plateNo":
 				return ec.fieldContext_Truck_plateNo(ctx, field)
+			case "isDeleted":
+				return ec.fieldContext_Truck_isDeleted(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Truck", field.Name)
 		},
@@ -1525,6 +1538,8 @@ func (ec *executionContext) fieldContext_Shipment_trucks(ctx context.Context, fi
 				return ec.fieldContext_Truck_id(ctx, field)
 			case "plateNo":
 				return ec.fieldContext_Truck_plateNo(ctx, field)
+			case "isDeleted":
+				return ec.fieldContext_Truck_isDeleted(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Truck", field.Name)
 		},
@@ -1615,6 +1630,50 @@ func (ec *executionContext) fieldContext_Truck_plateNo(ctx context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Truck_isDeleted(ctx context.Context, field graphql.CollectedField, obj *model.Truck) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Truck_isDeleted(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsDeleted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Truck_isDeleted(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Truck",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3672,6 +3731,13 @@ func (ec *executionContext) _Truck(ctx context.Context, sel ast.SelectionSet, ob
 		case "plateNo":
 
 			out.Values[i] = ec._Truck_plateNo(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "isDeleted":
+
+			out.Values[i] = ec._Truck_isDeleted(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
