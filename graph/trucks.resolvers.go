@@ -13,11 +13,19 @@ import (
 	"sync"
 	"log"
 	"encoding/csv"
+	"strings"
+	"errors"
+	"strconv"
 
 )
 
 func (r *mutationResolver) SaveTruck(ctx context.Context, id *string, plateNo string) (*model.Truck, error) {
 	// panic(fmt.Errorf("not implemented"))
+	err := platNoValidate(plateNo)
+
+	if err != nil {
+		return nil,err
+	}
 
 	truck := &model.Truck{
 
@@ -29,6 +37,36 @@ func (r *mutationResolver) SaveTruck(ctx context.Context, id *string, plateNo st
 	r.Truck = append(r.Truck, truck)
 
 	return truck, nil
+}
+
+func platNoValidate(plateNo string) error{
+	plateParts := strings.Split(plateNo, " ")
+	
+	if len(plateParts) != 3 {
+		return errors.New(INVALID_PLAT_NUMBER)
+	}else{
+
+		if len(plateParts[0]) > 2 {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+
+		
+		num, err := strconv.Atoi(plateParts[1])
+		
+		if err != nil {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+
+		if num > 9999 {
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+
+
+		if len(plateParts[2] )> 3{
+			return errors.New(INVALID_PLAT_NUMBER)
+		}
+	}
+	return nil
 }
 
 func (r *mutationResolver) SaveShipment(ctx context.Context, id *string, name string, origin string, destination string, deliveryDate string, truckID *string) (*model.Shipment, error) {
